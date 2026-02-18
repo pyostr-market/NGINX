@@ -1,0 +1,62 @@
+name: NGINX Deploy
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: unnecessary
+
+      - run: ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          script: |
+
+            set -e
+
+            echo "===== Переход в apps ====="
+
+            if [ ! -d "apps" ]; then
+              mkdir apps
+            fi
+
+            cd apps
+
+            echo "===== Проверка папки NGINX ====="
+
+            if [ ! -d "NGINX" ]; then
+              echo "Клонирование NGINX..."
+              git clone https://username:${{ secrets.ACCESS_TOKEN }}@github.com/pyostr-market/NGINX.git NGINX
+            fi
+
+            cd NGINX
+
+            echo "===== Обновление кода ====="
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "===== Применяем изменения ====="
+            docker compose up -d
+
+            echo "===== Проверка конфигурации ====="
+            docker exec market-gateway nginx -t
+
+            echo "===== Reload Nginx ====="
+            docker exec market-gateway nginx -s reload
+
+            echo "===== NGINX DEPLOY SUCCESS ====="
