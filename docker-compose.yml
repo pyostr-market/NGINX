@@ -1,0 +1,19 @@
+services:
+  gateway:
+    image: nginx:alpine
+    container_name: market-gateway
+    restart: unless-stopped
+
+    ports:
+      - "8200:80"
+
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d
+      - ./nginx.conf:/etc/nginx/nginx.conf
+
+    networks:
+      - MARKET_NETWORK
+
+networks:
+  MARKET_NETWORK:
+    external: true
